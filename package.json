@@ -1,0 +1,16 @@
+{
+  "name": "electricity-demand-forecasting-system",
+  "version": "1.0.0",
+  "description": "Root workspace configuration for the AI-Based Smart Electricity Demand Forecasting System",
+  "private": true,
+  "scripts": {
+    "install:client": "npm install --prefix client",
+    "install:server": "npm install --prefix server",
+    "install:ml": "cd ml-service && python -m venv .venv && .venv\\Scripts\\pip install -r requirements.txt",
+    "install:all": "npm run install:client && npm run install:server && npm run install:ml",
+    "dev:client": "npm run dev --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "dev:ml": "cd ml-service && .venv\\Scripts\\uvicorn app.main:app --reload --port 8000",
+    "build:client": "npm run build --prefix client"
+  }
+}
