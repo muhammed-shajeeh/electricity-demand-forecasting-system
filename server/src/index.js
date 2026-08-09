@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-require('dotenv').config();
+const config = require('./config');
 
 // Register global exception handlers for runtime stability
 process.on('uncaughtException', (err) => {
@@ -18,31 +18,28 @@ process.on('unhandledRejection', (err) => {
 });
 
 const connectDB = require('./database/connection');
+const apiRouter = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = config.port;
 
 // Connect to MongoDB Atlas
 connectDB();
 
 // Global Middlewares
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || '*' }));
+app.use(cors({ origin: config.clientUrl }));
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Single health check route
-app.get('/', (req, res) => {
-  res.json({
-    status: 'Backend Running'
-  });
-});
+// Main Routing mount
+app.use('/api', apiRouter);
 
 // Centralized error handling
 app.use(errorHandler);
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`[Server] Express backend server listening on port ${PORT}`);
+  console.log(`[Server] Express backend server listening on port ${PORT} in ${config.nodeEnv} mode`);
 });
