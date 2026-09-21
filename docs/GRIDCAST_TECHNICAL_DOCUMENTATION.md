@@ -332,6 +332,59 @@ Request -> Express -> verifyAuth -> requireRole -> (Controller/DB)
 
 ---
 
+## 21.5. LOGIN API (Milestone 7.2.4)
+**Endpoint**: POST /api/v1/auth/login
+**Request Format**:
+`json
+{
+  "email": "<ADMIN_EMAIL>",
+  "password": "<PASSWORD>"
+}
+`
+**Response Format**:
+`json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "token": "<JWT_TOKEN>",
+    "user": {
+      "id": "<USER_ID>",
+      "name": "System Administrator",
+      "email": "<ADMIN_EMAIL>",
+      "role": "Admin"
+    }
+  }
+}
+`
+**Authentication Flow**:
+`	ext
+User
+ ?
+POST /api/v1/auth/login
+ ?
+Validate request (email & password present)
+ ?
+Find user (by email)
+ ?
+Compare password (using bcrypt utility)
+ ?
+Check isActive (must be true)
+ ?
+Generate JWT
+ ?
+Return JWT
+ ?
+Client
+`
+
+**Security Decisions**:
+* The API returns generic 401 Unauthorized: Invalid email or password for unknown emails, wrong passwords, and disabled accounts to completely prevent user enumeration.
+* The API never returns the password or passwordHash in the response payload.
+* The JWT generation strictly references existing utilities; no duplicate cryptographic implementations are introduced.
+
+**Automated & Postman Test Results**:
+Automated tests confirmed 17 boundary checks including successful generation (200), wrong credentials (401), missing payloads (400), and missing JWT sensitive fields. Postman testing confirmed the token could be decoded properly and utilized in Authorization: Bearer <JWT_TOKEN> headers.
 ## 22. VIVA-FRIENDLY EXPLANATIONS
 **What is GridCast?**
 * *Technical*: An integrated MERN+Python stack for time-series predictive analytics.
@@ -357,3 +410,4 @@ Request -> Express -> verifyAuth -> requireRole -> (Controller/DB)
 * **CRUD Pipelines**: Interfaces to upload Telemetry and query Forecasts.
 * **Python ML Microservice**: A FastAPI application housing `scikit-learn` or `XGBoost` for regression forecasting.
 * **Interactive Dashboards**: React charting (e.g., Recharts) to visualize the uncertainty bounds visually on a graph.
+
