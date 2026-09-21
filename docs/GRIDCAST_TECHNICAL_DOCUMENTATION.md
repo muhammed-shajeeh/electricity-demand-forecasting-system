@@ -385,6 +385,53 @@ Client
 
 **Automated & Postman Test Results**:
 Automated tests confirmed 17 boundary checks including successful generation (200), wrong credentials (401), missing payloads (400), and missing JWT sensitive fields. Postman testing confirmed the token could be decoded properly and utilized in Authorization: Bearer <JWT_TOKEN> headers.
+## 21.6. PROTECTED API INTEGRATION (Milestone 7.2.5)
+**Purpose**:
+This milestone validated the entire authentication and authorization architecture end-to-end via an ephemeral HTTP test endpoint. It proved that the system correctly rejects unauthorized access and safely routes authorized access without leaking sensitive data or database secrets.
+
+**Middleware Execution Order**:
+The pipeline strictly enforces the following sequence:
+`	ext
+verifyAuth -> requireRole -> Endpoint Handler
+`
+* erifyAuth establishes *Identity* (Who is this user?) via JWT cryptography.
+* equireRole establishes *Permissions* (Are they allowed here?) by inspecting the identity.
+
+**Authentication vs Authorization Behavior**:
+* **HTTP 401 (Authentication Failed)**: The token is missing, tampered with, expired, or malformed.
+* **HTTP 403 (Authorization Failed)**: The token is mathematically valid, the user identity is known, but they lack the required role privileges.
+
+**Integration Flow**:
+`	ext
+User
+ ?
+Login (POST /api/v1/auth/login)
+ ?
+JWT Token Generated
+ ?
+Bearer Token attached to Authorization Header
+ ?
+verifyAuth (Cryptographic Verification)
+ ?
+req.user populated
+ ?
+requireRole (Role Inspection)
+ ?
+Protected Resource Granted
+`
+
+**Automated Integration & Postman Testing Results**:
+
+| Test | Expected | Actual | Status |
+| :--- | :--- | :--- | :--- |
+| No Authorization header | 401 | 401 | ? Passed |
+| Invalid / Malformed token | 401 | 401 | ? Passed |
+| Missing userId payload | 401 | 401 | ? Passed |
+| Valid Admin JWT on Admin route | 200 | 200 | ? Passed |
+| Valid Grid Operator JWT on Admin route | 403 | 403 | ? Passed |
+| Valid Energy Analyst JWT on Admin route | 403 | 403 | ? Passed |
+
+*(Note: The temporary test endpoint /api/v1/test/protected was safely removed from the repository after validation to maintain production hygiene).*
 ## 22. VIVA-FRIENDLY EXPLANATIONS
 **What is GridCast?**
 * *Technical*: An integrated MERN+Python stack for time-series predictive analytics.
@@ -410,4 +457,5 @@ Automated tests confirmed 17 boundary checks including successful generation (20
 * **CRUD Pipelines**: Interfaces to upload Telemetry and query Forecasts.
 * **Python ML Microservice**: A FastAPI application housing `scikit-learn` or `XGBoost` for regression forecasting.
 * **Interactive Dashboards**: React charting (e.g., Recharts) to visualize the uncertainty bounds visually on a graph.
+
 
