@@ -395,7 +395,8 @@ The pipeline strictly enforces the following sequence:
 verifyAuth -> requireRole -> Endpoint Handler
 `
 * erifyAuth establishes *Identity* (Who is this user?) via JWT cryptography.
-* equireRole establishes *Permissions* (Are they allowed here?) by inspecting the identity.
+* 
+equireRole establishes *Permissions* (Are they allowed here?) by inspecting the identity.
 
 **Authentication vs Authorization Behavior**:
 * **HTTP 401 (Authentication Failed)**: The token is missing, tampered with, expired, or malformed.
@@ -432,6 +433,118 @@ Protected Resource Granted
 | Valid Energy Analyst JWT on Admin route | 403 | 403 | ? Passed |
 
 *(Note: The temporary test endpoint /api/v1/test/protected was safely removed from the repository after validation to maintain production hygiene).*
+## 21.7. TELEMETRY API (Milestone 8.1)
+**Purpose**:
+The Telemetry API establishes the first major data ingestion pipeline for GridCast. It allows authorized users and authorized application clients to submit historical or real-time measurements combining electricity load and weather conditions.
+
+**Endpoint**: POST /api/v1/telemetry
+
+**Request Format**:
+`json
+{
+  "timestamp": "2026-09-28T10:00:00.000Z",
+  "actualLoadMW": 520.5,
+  "temperatureC": 29.4,
+  "humidity": 72
+}
+`
+
+**Response Format** (HTTP 201 Created):
+`json
+{
+  "success": true,
+  "message": "Telemetry created successfully",
+  "data": {
+    "id": "<OBJECT_ID>",
+    "timestamp": "2026-09-28T10:00:00.000Z",
+    "actualLoadMW": 520.5,
+    "temperatureC": 29.4,
+    "humidity": 72
+  }
+}
+`
+
+**Authentication & Authorization**:
+The endpoint relies on the previously tested middleware chain:
+* erifyAuth: Enforces Bearer JWT verification.
+* 
+equireRole("Admin", "Grid Operator"): Energy Analysts are explicitly blocked (HTTP 403) from data ingestion, as their role is confined to data analysis and reporting.
+
+**Validation Strategy**:
+The API prevents garbage data at the controller level before it hits Mongoose. It ensures the timestamp is a valid chronological construct, ctualLoadMW is non-negative, 	emperatureC is a valid float, and humidity respects the strict 0-100 percentage bound.
+
+**Duplicate Timestamp Behavior**:
+Because the database defines a unique index on 	imestamp, Mongoose natively throws an E11000 duplicate key error when a collision occurs. The controller intentionally intercepts this and safely returns an HTTP 409 Conflict, preventing silent overwrites while preserving historical immutability.
+
+**Telemetry API Request Flow**:
+`	ext
+Client
+ ?
+POST /api/v1/telemetry
+ ?
+verifyAuth (Cryptographic Verification)
+ ?
+requireRole (Admin, Grid Operator)
+ ?
+Request validation (Type & Bound checking)
+ ?
+Telemetry model validation (Mongoose)
+ ?
+MongoDB Atlas
+ ?
+201 Created
+`
+
+**Telemetry Validation Flow**:
+`	ext
+Request
+ ?
+Authentication
+ ?
+Authorization
+ ?
+Required fields?
+ +-- No ? 400
+ +-- Yes
+       ?
+Schema validation
+       ?
+Valid?
+ +-- No ? 400
+ +-- Yes
+       ?
+Duplicate timestamp?
+ +-- Yes ? 409
+ +-- No
+       ?
+MongoDB
+       ?
+201 Created
+`
+
+**Simple Telemetry Data Flow**:
+`	ext
+Electricity Load + Weather
+          ?
+       Telemetry
+          ?
+     MongoDB Atlas
+          ?
+ Historical Dataset
+          ?
+ Future ML Forecasting (PLANNED)
+`
+
+**Testing Results**:
+* **Automated HTTP Integration Testing**: The API successfully passed all 17 automated integration tests covering the endpoint's validation behavior, duplicate timestamp conflicts, and role-based restrictions.
+* **Manual Postman Testing**:
+  1. Admin login ? 200 OK (Pass)
+  2. Valid POST /api/v1/telemetry ? 201 Created (Pass)
+  3. Negative actualLoadMW ? 400 Bad Request (Pass)
+  4. Humidity = 120 ? 400 Bad Request (Pass)
+  5. Duplicate timestamp ? 409 Conflict (Pass)
+  6. No authentication ? 401 Unauthorized (Pass)
+  7. *Note*: The Energy Analyst authorization restriction (403 Forbidden) was fully verified via automated tests but was NOT manually tested in Postman because an Energy Analyst account does not yet exist in the database.
 ## 22. VIVA-FRIENDLY EXPLANATIONS
 **What is GridCast?**
 * *Technical*: An integrated MERN+Python stack for time-series predictive analytics.
@@ -457,5 +570,8 @@ Protected Resource Granted
 * **CRUD Pipelines**: Interfaces to upload Telemetry and query Forecasts.
 * **Python ML Microservice**: A FastAPI application housing `scikit-learn` or `XGBoost` for regression forecasting.
 * **Interactive Dashboards**: React charting (e.g., Recharts) to visualize the uncertainty bounds visually on a graph.
+
+
+
 
 
